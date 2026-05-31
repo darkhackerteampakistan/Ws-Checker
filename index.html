@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Number Status Manager</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial,sans-serif;
+}
+
+body{
+    background:#f4f6f9;
+    padding:20px;
+}
+
+.container{
+    max-width:1200px;
+    margin:auto;
+}
+
+h1{
+    margin-bottom:15px;
+}
+
+.card{
+    background:white;
+    padding:15px;
+    border-radius:10px;
+    margin-bottom:15px;
+    box-shadow:0 2px 10px rgba(0,0,0,.08);
+}
+
+textarea{
+    width:100%;
+    height:120px;
+    padding:10px;
+}
+
+button{
+    padding:10px 15px;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+    margin:5px;
+}
+
+.primary{
+    background:#007bff;
+    color:white;
+}
+
+.success{
+    background:#28a745;
+    color:white;
+}
+
+.danger{
+    background:#dc3545;
+    color:white;
+}
+
+.gray{
+    background:#6c757d;
+    color:white;
+}
+
+.stats{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+.stat{
+    flex:1;
+    min-width:180px;
+    background:white;
+    padding:15px;
+    border-radius:10px;
+    text-align:center;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+th,td{
+    border:1px solid #ddd;
+    padding:10px;
+    text-align:left;
+}
+
+th{
+    background:#f0f0f0;
+}
+
+input[type="search"]{
+    width:100%;
+    padding:10px;
+    margin-bottom:10px;
+}
+
+select{
+    padding:10px;
+}
+
+.status-have{
+    color:green;
+    font-weight:bold;
+}
+
+.status-no{
+    color:red;
+    font-weight:bold;
+}
+
+.status-unchecked{
+    color:orange;
+    font-weight:bold;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<h1>Number Status Manager</h1>
+
+<div class="stats">
+<div class="stat">
+<h3 id="total">0</h3>
+<p>Total</p>
+</div>
+
+<div class="stat">
+<h3 id="have">0</h3>
+<p>WhatsApp আছে</p>
+</div>
+
+<div class="stat">
+<h3 id="no">0</h3>
+<p>WhatsApp নেই</p>
+</div>
+
+<div class="stat">
+<h3 id="unchecked">0</h3>
+<p>Unchecked</p>
+</div>
+</div>
+
+<div class="card">
+<h3>Add Numbers</h3>
+
+<textarea id="numbers"
+placeholder="এক লাইনে একটি নম্বর"></textarea>
+
+<br>
+
+<button class="primary" onclick="addNumbers()">Add Numbers</button>
+</div>
+
+<div class="card">
+
+<input type="search"
+id="search"
+placeholder="Search Number..."
+onkeyup="renderTable()">
+
+<select id="filter" onchange="renderTable()">
+<option value="all">All</option>
+<option value="have">WhatsApp আছে</option>
+<option value="no">WhatsApp নেই</option>
+<option value="unchecked">Unchecked</option>
+</select>
+
+<button class="success" onclick="markSelected('have')">
+WhatsApp আছে
+</button>
+
+<button class="danger" onclick="markSelected('no')">
+WhatsApp নেই
+</button>
+
+<button class="gray" onclick="markSelected('unchecked')">
+Unchecked
+</button>
+
+<button class="primary" onclick="copyFiltered()">
+Copy Filtered
+</button>
+
+<button class="success" onclick="exportCSV()">
+Export CSV
+</button>
+
+</div>
+
+<div class="card">
+<table>
+<thead>
+<tr>
+<th><input type="checkbox" id="selectAll"></th>
+<th>Number</th>
+<th>Status</th>
+</tr>
+</thead>
+
+<tbody id="tableBody"></tbody>
+
+</table>
+</div>
+
+</div>
+
+<script>
+
+let data = JSON.parse(localStorage.getItem('numbersData')) || [];
+
+function save(){
+localStorage.setItem('numbersData', JSON.stringify(data));
+updateStats();
+}
+
+function addNumbers(){
+
+const text=document.getElementById('numbers').value.trim();
+
+if(!text) return;
+
+const nums=text.split('\n');
+
+nums.forEach(n=>{
+
+n=n.trim();
+
+if(n && !data.find(x=>x.number===n)){
+data.push({
+number:n,
+status:'unchecked'
+});
+}
+
+});
+
+document.getElementById('numbers').value='';
+
+save();
+renderTable();
+}
+
+function renderTable(){
+
+const tbody=document.getElementById('tableBody');
+tbody.innerHTML='';
+
+const search=document.getElementById('search').value.toLowerCase();
+
+const filter=document.getElementById('filter').value;
+
+data.forEach((row,index)=>{
+
+if(search &&
+!row.number.toLowerCase().includes(search))
+return;
+
+if(filter!=='all' &&
+row.status!==filter)
+return;
+
+let statusClass='status-unchecked';
+
+if(row.status==='have')
+statusClass='status-have';
+
+if(row.status==='no')
+statusClass='status-no';
+
+tbody.innerHTML+=`
+<tr>
+<td>
+<input type="checkbox"
+class="rowCheck"
+data-index="${index}">
+</td>
+
+<td>${row.number}</td>
+
+<td class="${statusClass}">
+${row.status}
+</td>
+</tr>
+`;
+
+});
+
+updateStats();
+}
+
+function markSelected(status){
+
+document
+.querySelectorAll('.rowCheck:checked')
+.forEach(c=>{
+
+const i=c.dataset.index;
+
+data[i].status=status;
+
+});
+
+save();
+renderTable();
+}
+
+function updateStats(){
+
+document.getElementById('total').innerText=data.length;
+
+document.getElementById('have').innerText=
+data.filter(x=>x.status==='have').length;
+
+document.getElementById('no').innerText=
+data.filter(x=>x.status==='no').length;
+
+document.getElementById('unchecked').innerText=
+data.filter(x=>x.status==='unchecked').length;
+
+}
+
+function copyFiltered(){
+
+const filter=document.getElementById('filter').value;
+
+let list=data;
+
+if(filter!=='all'){
+list=data.filter(x=>x.status===filter);
+}
+
+const txt=list.map(x=>x.number).join('\n');
+
+navigator.clipboard.writeText(txt);
+
+alert('Copied!');
+}
+
+function exportCSV(){
+
+let csv="number,status\n";
+
+data.forEach(r=>{
+csv+=`${r.number},${r.status}\n`;
+});
+
+const blob=new Blob([csv],{
+type:'text/csv'
+});
+
+const a=document.createElement('a');
+
+a.href=URL.createObjectURL(blob);
+
+a.download='numbers.csv';
+
+a.click();
+
+}
+
+document.getElementById('selectAll')
+.addEventListener('change',function(){
+
+document
+.querySelectorAll('.rowCheck')
+.forEach(c=>c.checked=this.checked);
+
+});
+
+renderTable();
+
+</script>
+
+</body>
+</html>
